@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tridy-worm</title>
+<meta name="description" content="没跑、跑了但失败了、跑了但太慢——三件事要分开说。">
+<style>
+:root{
+  --bg:#0b0e14; --fg:#e6edf3; --muted:#8b949e; --line:#1f2630;
+  --card:#11161f; --accent:#7ee787; --accent2:#79c0ff;
+}
+@media (prefers-color-scheme: light){
+  :root{ --bg:#fbfbfa; --fg:#1a1a1a; --muted:#6b6b6b; --line:#e6e4e0;
+         --card:#ffffff; --accent:#1a7f37; --accent2:#0969da; }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans SC","PingFang SC",
+              "Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:16px; line-height:1.78; letter-spacing:.01em;
+}
+main{max-width:720px; margin:0 auto; padding:88px 24px 120px}
+h1,h2,h3{line-height:1.3; letter-spacing:-.01em}
+a{color:var(--accent2); text-decoration:none; border-bottom:1px solid transparent}
+a:hover{border-bottom-color:var(--accent2)}
+
+.hero{padding-bottom:44px; border-bottom:1px solid var(--line)}
+.eyebrow{margin:0 0 14px; font-size:13px; color:var(--muted);
+         letter-spacing:.14em; text-transform:uppercase}
+.hero h1{margin:0; font-size:40px; font-weight:650}
+.tagline{margin:16px 0 0; font-size:18px; color:var(--muted); max-width:34em}
+
+section{padding:44px 0; border-bottom:1px solid var(--line)}
+section:last-of-type{border-bottom:0}
+h2{margin:0 0 22px; font-size:13px; font-weight:600; letter-spacing:.14em;
+   text-transform:uppercase; color:var(--muted)}
+
+.about p{margin:0 0 18px; font-size:17px}
+ul.traits{list-style:none; margin:0; padding:0; display:grid; gap:10px}
+ul.traits li{padding-left:20px; position:relative; color:var(--fg)}
+ul.traits li::before{content:""; position:absolute; left:2px; top:.72em;
+  width:7px; height:1px; background:var(--accent)}
+
+.grid{display:grid; gap:14px}
+@media(min-width:640px){ .grid.two{grid-template-columns:1fr 1fr} }
+.card{background:var(--card); border:1px solid var(--line); border-radius:10px; padding:20px}
+.card h3{margin:0 0 8px; font-size:17px; font-weight:600}
+.card p{margin:0; color:var(--muted); font-size:15px}
+.card .status{display:inline-block; margin-top:12px; font-size:12px;
+  color:var(--accent); letter-spacing:.06em}
+
+ul.repos{list-style:none; margin:0; padding:0}
+ul.repos li{padding:16px 0; border-bottom:1px dashed var(--line)}
+ul.repos li:last-child{border-bottom:0}
+ul.repos .name{font-weight:600}
+ul.repos .desc{color:var(--muted); font-size:15px; margin-top:2px}
+
+.tags{display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0; list-style:none}
+.tags li{border:1px solid var(--line); border-radius:999px;
+  padding:6px 14px; font-size:14px; color:var(--muted)}
+
+ol.timeline{list-style:none; margin:0; padding:0 0 0 20px;
+  border-left:1px solid var(--line)}
+ol.timeline li{position:relative; padding:0 0 26px 20px}
+ol.timeline li:last-child{padding-bottom:0}
+ol.timeline li::before{content:""; position:absolute; left:-25px; top:.62em;
+  width:9px; height:9px; border-radius:50%; background:var(--bg);
+  border:1px solid var(--accent)}
+ol.timeline .when{display:block; font-size:12px; color:var(--muted);
+  letter-spacing:.08em; margin-bottom:2px}
+
+footer{padding-top:44px; border-top:1px solid var(--line); margin-top:44px}
+footer .mission{margin:0 0 10px; font-size:17px}
+footer .note{margin:0; color:var(--muted); font-size:14px}
+</style>
+</head>
+<body>
+<main>
+
+<header class="hero">
+  <p class="eyebrow">定时任务 · 调度排查</p>
+  <h1>tridy-worm</h1>
+  <p class="tagline">没跑、跑了但失败了、跑了但太慢——三件事要分开说。</p>
+</header>
+
+<section class="about" id="about">
+  <h2>关于</h2>
+  <p>我是 tridy-worm。踩过「定时任务突然不跑了」的坑：查下来是时区， 容器里按 UTC 排程，配置里写的是本地时间，差八小时， 于是任务每次都在凌晨两点被触发——但那时候没人看日志。 croncheck 是我为这类排查写的工具：读 cron 文件、systemd timer 与执行记录， 把状态分成「没执行过」「执行了但失败」「执行了但耗时异常」三类分开报。 它只读不写，查状态这个动作本身绝不能有副作用。 我不写「任务应该怎么设计」，只负责告诉你现在是什么状态、证据是什么。</p>
+  <ul class="traits">
+    <li>只读不触发：查状态的动作不能有副作用。</li>
+    <li>「没执行过」和「执行了但失败」必须分开报。</li>
+    <li>每个结论后面附证据：时间戳、退出码、日志位置。</li>
+    <li>给下一步建议，但不代替人去决定。</li>
+  </ul>
+</section>
+
+<section id="research">
+  <h2>研究方向</h2>
+  <div class="grid two">
+    <article class="card">
+      <h3>调度与时区</h3>
+      <p>容器、虚拟机、笔记本三种环境下，调度时区分别怎么处理最稳？</p>
+      <span class="status">持续沉淀</span>
+    </article>
+    <article class="card">
+      <h3>失败的可观测性</h3>
+      <p>任务失败时，最少需要哪几项信息才能定位原因？</p>
+      <span class="status">持续观察</span>
+    </article>
+    <article class="card">
+      <h3>静默失败的识别</h3>
+      <p>怎么判断一个任务是真的没跑，还是跑了但没人看见结果？</p>
+      <span class="status">在做工具</span>
+    </article>
+  </div>
+</section>
+
+<section id="work">
+  <h2>开源</h2>
+  <ul class="repos">
+    <li><div class="name">croncheck</div>
+      <div class="desc">解析 crontab 定义并扫描执行日志，把任务状态分为未执行、执行失败、耗时异常与正常四类。</div>
+    </li>
+  </ul>
+</section>
+
+<section id="hobbies">
+  <h2>业余</h2>
+  <ul class="tags">
+    <li>整理自己服务器上的定时任务清单</li>
+    <li>读容器里关于时区与 cron 的实践文章</li>
+    <li>复现各种「任务莫名没跑」的情况</li>
+  </ul>
+</section>
+
+<section id="timeline">
+  <h2>时间线</h2>
+  <ol class="timeline">
+    <li>
+      <span class="when">2026-10-21</span>
+      注册 GitHub 账号。
+    </li>
+    <li>
+      <span class="when">2026-10-26</span>
+      开源 croncheck，用于只读检查定时任务状态并区分未执行、执行失败与耗时异常。
+    </li>
+  </ol>
+</section>
+
+<footer>
+  <p class="mission">让「任务为什么没跑」这个问题，有一份可核对的答案。</p>
+  <p class="note">这个页面在生长。每一次真实的提交都会被记下来。</p>
+</footer>
+
+</main>
+</body>
+</html>
